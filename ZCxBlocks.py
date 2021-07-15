@@ -1,14 +1,14 @@
 # This is the module of ZCxBlock
 # The block type:
 #
-# T        I        L       
-#    *     * x * *  *   
-#  * x *            x   
-#                   * *  
+# T        I         L       
+#    *               *   
+#  * x *    * x * *  x   
+#                    * *  
 #                           
-#  J       O        S        Z 
-#  *       * *        * *    * *
-#  x       x *      * x        x *
+#  J       O         S        Z 
+#    *     * *         * *    * *
+#    x     x *       * x        x *
 #  * * 
 #================================================
 #           rotate type : O->R->2->L
@@ -38,8 +38,8 @@ class ZCxBlock:
     #--------------------------------------------
     Rotate_State_dic={"O":0,"R":1,"2":2,"L":3,0:"O",1:"R",2:"2",3:"L"}
     Wall_Kick_JLSTZ=(((0,0),(0,0),(0,0),(0,0)),((0,0),(1,0),(0,0),(-1,0)),((0,0),(1,-1),(0,0),(-1,-1)),((0,0),(0,2),(0,0),(0,2)),((0,0),(1,2),(0,0),(-1,2)))
-    Wall_Kick_I=(((0,0),(-1,0),(-1,1)(0,1)),((-1,0),(0,0),(1,1),(0,1)),((2,0),(0,0),(-2,1),(0,1)),((-1,0),(0,1),(1,0),(0,-1)),((2,0),(0,-2),(-2,0),(0,2)))
-    Wall_Kick_O=(((0,0),(0,-1),(-1,-1),(-1,0)))
+    Wall_Kick_I=    (((0,0),(-1,0),(-1,1),(0,1)),((-1,0),(0,0),(1,1),(0,1)),((2,0),(0,0),(-2,1),(0,1)),((-1,0),(0,1),(1,0),(0,-1)),((2,0),(0,-2),(-2,0),(0,2)))
+    Wall_Kick_O=((0,0),(0,-1),(-1,-1),(-1,0))
     #--------------------------------------------
     def __init__(self):
         self.Block=[[0,0,0,0],
@@ -53,8 +53,8 @@ class ZCxBlock:
     #--------------------------------------------
     def SetType_T(self):
         self.Block=[[0,1,0,0],
-                    [1,1,1,0],
-                    [0,0,0,0],
+                    [1,1,0,0],
+                    [0,1,0,0],
                     [0,0,0,0]]
         self.BlockType='T'
         self.Rotate_Type=3
@@ -62,19 +62,19 @@ class ZCxBlock:
         self.Wall_Kick_Type="JLSTZ"
     #--------------------------------------------
     def SetType_I(self):
-        self.Block=[[0,0,0,0],
-                    [1,1,1,1],
-                    [0,0,0,0],
-                    [0,0,0,0]]
+        self.Block=[[0,1,0,0],
+                    [0,1,0,0],
+                    [0,1,0,0],
+                    [0,1,0,0]]
         self.BlockType='I'
         self.Rotate_Type=4
         self.Rotate_State="O"
         self.Wall_Kick_Type="I"
     #--------------------------------------------
     def SetType_L(self):
-        self.Block=[[0,1,0,0],
+        self.Block=[[1,1,0,0],
                     [0,1,0,0],
-                    [0,1,1,0],
+                    [0,1,0,0],
                     [0,0,0,0]]
         self.BlockType='L'
         self.Rotate_Type=3
@@ -102,9 +102,9 @@ class ZCxBlock:
         self.Wall_Kick_Type="O"
     #--------------------------------------------
     def SetType_S(self):
-        self.Block=[[0,1,1,0],
+        self.Block=[[1,0,0,0],
                     [1,1,0,0],
-                    [0,0,0,0],
+                    [0,1,0,0],
                     [0,0,0,0]]
         self.BlockType='S'
         self.Rotate_Type=3
@@ -112,9 +112,9 @@ class ZCxBlock:
         self.Wall_Kick_Type="JLSTZ"
     #--------------------------------------------
     def SetType_Z(self):
-        self.Block=[[1,1,0,0],
+        self.Block=[[0,0,1,0],
                     [0,1,1,0],
-                    [0,0,0,0],
+                    [0,1,0,0],
                     [0,0,0,0]]
         self.BlockType='Z'
         self.Rotate_Type=3
@@ -157,13 +157,17 @@ class ZCxBlock:
                     for x in range(4):
                         index=4*x+3-y
                         self.Block[y][x]=temp[index//4][index%4]
-
+        shift_offset=[0,0]
         if self.Wall_Kick_Type=="JLSTZ":
-            shift_offset= LorR*(ZCxBlock.Wall_Kick_JLSTZ[WKtestnum][ZCxBlock.Rotate_State_dic[self.Rotate_State]]-ZCxBlock.Wall_Kick_JLSTZ[WKtestnum][(ZCxBlock.Rotate_State_dic[self.Rotate_State]+1)%4])
+            shift_offset[0]= LorR*(ZCxBlock.Wall_Kick_JLSTZ[WKtestnum][ZCxBlock.Rotate_State_dic[self.Rotate_State]][0]-ZCxBlock.Wall_Kick_JLSTZ[WKtestnum][(ZCxBlock.Rotate_State_dic[self.Rotate_State]+1)%4][0])
+            shift_offset[1]= LorR*(ZCxBlock.Wall_Kick_JLSTZ[WKtestnum][ZCxBlock.Rotate_State_dic[self.Rotate_State]][1]-ZCxBlock.Wall_Kick_JLSTZ[WKtestnum][(ZCxBlock.Rotate_State_dic[self.Rotate_State]+1)%4][1])
         elif  self.Wall_Kick_Type=="I":
-            shift_offset=LorR*(ZCxBlock.Wall_Kick_I[WKtestnum][ZCxBlock.Rotate_State_dic[self.Rotate_State]]-ZCxBlock.Wall_Kick_I[WKtestnum][(ZCxBlock.Rotate_State_dic[self.Rotate_State]+1)%4])
+            shift_offset[0]=LorR*(ZCxBlock.Wall_Kick_I[WKtestnum][ZCxBlock.Rotate_State_dic[self.Rotate_State]][0]-ZCxBlock.Wall_Kick_I[WKtestnum][(ZCxBlock.Rotate_State_dic[self.Rotate_State]+1)%4][0])
+            shift_offset[1]=LorR*(ZCxBlock.Wall_Kick_I[WKtestnum][ZCxBlock.Rotate_State_dic[self.Rotate_State]][1]-ZCxBlock.Wall_Kick_I[WKtestnum][(ZCxBlock.Rotate_State_dic[self.Rotate_State]+1)%4][1])
         elif self.Wall_Kick_Type=="O":
-            shift_offset=LorR*(ZCxBlock.Wall_Kick_O[WKtestnum][ZCxBlock.Rotate_State_dic[self.Rotate_State]]-ZCxBlock.Wall_Kick_O[WKtestnum][(ZCxBlock.Rotate_State_dic[self.Rotate_State]+1)%4])
+            shift_offset[0]=LorR*(ZCxBlock.Wall_Kick_O[ZCxBlock.Rotate_State_dic[self.Rotate_State]][0]-ZCxBlock.Wall_Kick_O[(ZCxBlock.Rotate_State_dic[self.Rotate_State]+1)%4][0])
+            shift_offset[1]=LorR*(ZCxBlock.Wall_Kick_O[ZCxBlock.Rotate_State_dic[self.Rotate_State]][1]-ZCxBlock.Wall_Kick_O[(ZCxBlock.Rotate_State_dic[self.Rotate_State]+1)%4][1])
+
         return shift_offset
     #--------------------------------------------
     def show_block(self):

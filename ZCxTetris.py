@@ -1,5 +1,8 @@
+#================================================
 import pygame
 import random
+from ZCxBlocks import ZCxBlock
+#================================================
 
 
 #grid 10*20
@@ -19,9 +22,8 @@ lines_to_clear = 1
 colors = [(0, 255, 0), (255, 0, 0), (0, 255, 255),
           (255, 255, 0), (255, 165, 0), (0, 0, 255), (128, 0, 128)]
 #================================================================
-
-
-class Tetris:
+class ZCxTetris:
+    Block_Type=["O","I","T","Z","S","J","L"]
     clear = 0
     score = 0
     state = "start"
@@ -31,168 +33,183 @@ class Tetris:
     startX = 100
     startY = 50
     zoom = 20
-    block = None
-
+    #============================================
     def __init__(self, height, width):
-        self.width = width
-        self.height = height
-        self.block = None
+        self.width = 3+width+3
+        self.height = 3+height+3
+        self.block = ZCxBlock()
         self.field = []
+        self.ptBlock_x=5
+        self.ptBlock_y=0
         #create an empty field
-        for i in range(height):
+        #creat by row major
+        for i in range(self.height):
             new_line = []
-            for j in range(width):
+            for j in range(self.width):
                 new_line.append(0)
             self.field.append(new_line)
-
-    def create_block(self):
-        self.block = ZCxBlock(3, 0)
-
+    #============================================
+    def create_block(self,type):
+        if type=="T":
+            self.block.SetType_T()
+        if type=="I":
+            self.block.SetType_I()
+        if type=="L":
+            self.block.SetType_L()
+        if type=="J":
+            self.block.SetType_J()
+        if type=="O":
+            self.block.SetType_O()
+        if type=="S":
+            self.block.SetType_S()
+        if type=="Z":
+            self.block.SetType_Z()
+    #============================================
     def intersect(self):
-        intersect = False
         for i in range(4):
             for j in range(4):
-                # making sure tiles containing figure are not 0
-                if (i * 4) + j in self.block.get_block():
-                    if(i+self.block.y) > (self.height - 1) or (j + self.block.x) > (self.width - 1) or (j + self.block.x) < 0 or self.field[i + self.block.y][j + self.block.x] > 0:
-                        intersect = True
-        return intersect
-
+                if self.field[i + self.ptBlock_y][j + self.ptBlock_x]==1 and self.block.Block[i][j]==1:
+                    return True
+                    
+        return False
+    #============================================
     def freeze_block(self):
         for i in range(4):
             for j in range(4):
-                # identifies tiles containing figure vs empty tiles in the 4x4 matrix
-                if i * 4 + j in self.block.get_block():
-                    # give non zero values to all tiles containing the figure
-                    self.field[i + self.block.y][j + self.block.x] = self.block.color
-         # after freezing, check if any row is full and  remove that row
-        self.clear_line()
-        #create new block
-        self.create_block()
-        if self.intersect():
-            self.state = "gameover"
-
+                    if self.block.Block[i][j]==1:
+                        self.field[i + self.ptBlock_y][j + self.ptBlock_x] = self.block.Block[i][j]
+        self.block.BlockType=None
+        return self.clear_line()
+    #============================================
     def clear_line(self):
         lines = 0
-        for i in range(1, self.height):
-            zeros = 0
-            for j in range(0, self.width):
-                if self.field[i][j] == 0:
-                    zeros += 1
-            if zeros == 0:
-                lines += 1
-                for i1 in range(i, 1, -1):
-                    for j in range(self.width):
-                        # since height index in self.field is in descending order this code assigns the higher row to the lower row
-                        self.field[i1][j] = self.field[i1 - 1][j]
-    # add to score, if multiple lines are cleared at the same time exponentialize the score
-        self.score += lines ** 2
-        self.clear += lines
-        self.check_level_up()
-
-    def check_level_up(self):
-        global level
-        global lines_to_clear
-        if self.clear >= level:
-            level += 1
-            lines_to_clear = level
-            self.clear = 0
-            return True
-        else:
-            lines_to_clear = level - self.clear
-            return False
-
+        row_sum=0
+        cancle_row=[]
+        for i in range(self.height-3-3):
+            row_sum=0
+            for j in range(self.width-3-3):
+                if(self.field[3+i][j+3]>0):
+                    row_sum+=1
+            if(row_sum==self.width-3-3):
+                cancle_row.append(i+3)
+                for index in range(self.width-3-3):
+                    self.field[i+3][index+3]=0
+                    lines+=1
+        if lines==0:
+            return 0
+        for row in cancle_row:
+            for upper_row in range(row-1):
+                for x in range(self.width-3-3):
+                    self.field[row-upper_row][x+3]=self.field[row-upper_row-1][x+3]
+        return lines+self.clear_line()
+    #============================================
     # makes the black fall down until it gets into a collision
     def fall(self):
-        while not self.intersect():
-            self.block.y += 1
-        if self.intersect():
-            self.block.y -= 1
-            self.freeze_block()
-
+        while not (self.intersect() or self.unbound()):
+            self.ptBlock_y += 1
+        self.ptBlock_y -= 1
+        return self.freeze_block()
+        
+    #============================================
     def go_down(self):
-        self.block.y += 1
-        if self.intersect():
-            self.block.y -= 1
-            self.freeze_block()
-
+        self.ptBlock_y += 1
+        if self.intersect() or self.unbound():
+            self.ptBlock_y -= 1
+            return self.freeze_block()
+        return 0
+         
+    #============================================
     def go_side(self, dx):
         #dx = 1 for right, -1 for left
-        previous_x = self.block.x
-        self.block.x += dx
+        previous_x = self.ptBlock_x
+        self.ptBlock_x += dx
         #if there is collision during go_side, then revert back to previously saved position
-        if self.intersect():
-            self.block.x = previous_x
+        if self.intersect() or self.unbound() or self.ptBlock_x<0 or self.ptBlock_x>=self.width-3 or self.ptBlock_y<0 or self.ptBlock_y>=self.height-3:
+            self.ptBlock_x = previous_x
+    #============================================
+    def rotation(self,LorR):
+        test_case=0
+        previous_stat = self.block
+        shift=self.block.Rotate(LorR,test_case)
+        self.ptBlock_x+=shift[0]
+        self.ptBlock_y+=shift[1]
+        if self.block.BlockType!="O":
+            while  (self.intersect() or self.unbound()) :
+                self.block = previous_stat
+                self.ptBlock_x-=shift[0]
+                self.ptBlock_y-=shift[1]
+                test_case+=1
+                if test_case==4:
+                    return 
+                shift=self.block.Rotate(LorR,test_case)
+                self.ptBlock_x+=shift[0]
+                self.ptBlock_y+=shift[1]
+                
+            else:
+                self.block.Rotate_State=self.block.Rotate_State_dic[(self.block.Rotate_State_dic[self.block.Rotate_State]+1)%4]
+        else:
+            if self.intersect() or self.unbound():
+                self.block=previous_stat
+                self.ptBlock_x-=shift[0]
+                self.ptBlock_y-=shift[1]
+            else:
+                self.block.Rotate_State=self.block.Rotate_State_dic[(self.block.Rotate_State_dic[self.block.Rotate_State]+1)%4]
+    #============================================
+    def unbound(self):
+        for i in range(4):
+            for j in range(4):
+                if self.block.Block[i][j]==1 and (i+self.ptBlock_y>=self.height-3 or j+self.ptBlock_x<3 or  j+self.ptBlock_x>=self.width-3):
+                    print("unbound")
+                    return True
+        return False
+    #============================================
+    def game_over(self):
+        for i in range(3):
+            for j in range(self.width-3-3):
+                if(self.field[i][j+3])==1:
+                    return True
+        return False
+        #============================================
+        
 
-    def rotation(self):
-        previous_rotation = self.block.rotation
-        self.block.rotation()
-        #if there is collision during rotation, then revert back to previouslu saved rotation
-        if self.intersect():
-            self.block.rotation = previous_rotation
-#==============================================================
-
-
-class ZCxBlock:
-    # |0 |1 |2 |3 |
-    # |4 |5 |6 |7 |
-    # |8 |9 |10|11|
-    # |12|13|14|15|
-    blocks = [
-        [[4, 5, 6, 7], [1, 5, 9, 13]],  # I
-        [[1, 4, 5, 6], [1, 4, 5, 9], [4, 5, 6, 9],
-            [1, 5, 6, 9]],  # T
-        # J
-        [[1, 2, 5, 9], [0, 4, 5, 6], [1, 5, 8, 9], [4, 5, 6, 10]],
-        # L
-        [[1, 2, 6, 10], [3, 5, 6, 7], [2, 6, 10, 11], [5, 6, 7, 9]],
-        [[5, 6, 9, 10]],  # O
-        # S
-        [[1, 2, 4, 5], [0, 4, 5, 9], [5, 6, 8, 9], [1, 5, 6, 10]],
-        # Z
-        [[1, 2, 6, 7], [3, 6, 7, 10], [5, 6, 10, 11], [2, 5, 6, 9]]
-    ]
-
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.type = random.randint(0, len(self.blocks)-1)
-        self.color = random.randint(1, (len(colors) - 1))
-        self.rotation = 0
-    #get the specific shape and color of the falling block
-
-    def get_block(self):
-        return self.blocks[self.type][self.rotation]
-
-    def rotation(self):
-        self.rotation = (self.rotation+1) % (len(self.blocks[self.type]))
+#================================================================
 # - main
-
-
 def main():
     global level
     global lines_to_clear
     gameover = False
     count = 0
     fps = 30
-    press_down = False
+    auto_down = False
+    round_score=0
     pygame.init()
     win = pygame.display.set_mode((400, 500))
     pygame.display.set_caption("ZCxTetris")
     clock = pygame.time.Clock()
-    game = Tetris(play_height, play_width)
+    game = ZCxTetris(play_height, play_width)
+    #================================================
     while not gameover:
-        if game.block is None:
-            game.create_block()
-        count += 1
-        if count > 100000:
-            count = 0
-        #make sure blocks fall down at same speed
-        if count % (fps // level // 2) == 0 or press_down:
-            if game.state == "start":
-                game.go_down()
-
+        round_score=0
+        if count<30:
+            count+=1
+        else:
+            count=0
+            auto_down=True
+        #========================================
+        if game.block.BlockType==None:
+            game.create_block(random.choice(game.Block_Type))
+            if game.block.BlockType=="I":
+                game.ptBlock_x=5
+                game.ptBlock_y=0
+            else :
+                game.ptBlock_x=5
+                game.ptBlock_y=1
+    
+            next_block=True
+        #========================================
+        #Key board set up
         for event in pygame.event.get():
+            count=0
             if event.type == pygame.QUIT:
                 gameover = True
                 pygame.quit()
@@ -202,50 +219,58 @@ def main():
                 if event.key == pygame.K_LEFT:
                     game.go_side(-1)
                 if event.key == pygame.K_UP:
-                    game.rotation()
+                    game.rotation(1)
+                if event.key == pygame.K_z:
+                    game.rotation(-1)
                 if event.key == pygame.K_DOWN:
-                    press_down = True
+                    round_score+=game.go_down()
                 if event.key == pygame.K_SPACE:
-                    game.fall()
+                    round_score+=game.fall()
                 if event.key == pygame.K_ESCAPE:
                     pygame.quit()
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_DOWN:
-                press_down = False
-        #win.fill((0, 0, 0))
+        if auto_down==True:
+            auto_down=False
+            game.ptBlock_y+=1
+            if game.intersect() or game.unbound():
+                game.ptBlock_y-=1
+                round_score+=game.freeze_block()
+        round_score+=game.clear_line()
+        game.score=round_score**2
+        if game.game_over():
+            game.state="gameover"
+        
+        #========================================
+        #draw background and block
         win.blit(background, (0, 0))
-        #draw grid
-        for i in range(game.height):
-            for j in range(game.width):
+        for i in range(game.height-3-3):
+            for j in range(game.width-3-3):
                 pygame.draw.rect(win, (128, 128, 128), [game.startX + game.zoom * j, game.startY + game.zoom * i, game.zoom, game.zoom], 1)
-                if game.field[i][j] > 0:
-                    pygame.draw.rect(win, colors[game.field[i][j]], [game.startX + game.zoom * j, game.startY + game.zoom * i, game.zoom - 2, game.zoom - 1])
+                if game.field[i+3][j+3] > 0:
+                    pygame.draw.rect(win, colors[game.field[i+3][j+3]], [game.startX + game.zoom * j, game.startY + game.zoom * i, game.zoom - 2, game.zoom - 1])
 
-        if game.block is not None:
-            for i in range(4):
+        if game.block.BlockType!=None:
+           for i in range(4):
                 for j in range(4):
-                    p = i * 4 + j
-                    if p in game.block.get_block():
-                        pygame.draw.rect(win, colors[game.block.color], [game.startX + game.zoom * ( j + game.block.x) + 1, game.startY + game.zoom * (i + game.block.y) + 1, game.zoom - 2, game.zoom - 2])
+                    if game.block.Block[i][j]>0 and game.ptBlock_y+i>=3:
+                        pygame.draw.rect(win, colors[game.block.Block[i][j]], [game.startX + game.zoom * ( j + game.ptBlock_x-3) + 1, game.startY + game.zoom * (i + game.ptBlock_y-3) + 1, game.zoom- 2, game.zoom - 2])
+        #========================================
         font1 = pygame.font.SysFont('comicsans', 28, True)
         font2 = pygame.font.SysFont('comicsans', 50, True)
         text_score = font1.render("Score: " + str(game.score), True, (255, 255, 255))
         text_level = font1.render("Level: " + str(level), True, (255, 255, 255))
         text_lines_to_clear = font1.render("Lines to clear: " + str(lines_to_clear), True, (255, 255, 255))
         text_game_over1 = font2.render("Game Over", True, (255, 250, 205))
-        #text_game_over2 = font1.render("Press ESC", True, (255, 250, 205))
-
         win.blit(text_score, [25, 20])
         win.blit(text_lines_to_clear, [175, 20])
         win.blit(text_level, [175, 5])
-        if game.check_level_up():
-            main()
+        #========================================
         if game.state == "gameover":
             win.blit(text_game_over1, [110, 220])
-            #win.blit(text_game_over2, [150, 275])
+            pygame.diaplay.flip()
+            break
         pygame.display.flip()
         clock.tick(fps)
-
+    #============================================
 
 if __name__ == "__main__":
     # call the main function
